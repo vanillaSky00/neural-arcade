@@ -1,132 +1,223 @@
-# TankMan 🪖
+# 🕹️ neural-arcade
 
-A team-based tank battle game where 2–6 players compete to eliminate the opposing team or outscore them before time runs out. Destroy walls, collect resources, and coordinate with teammates to dominate the battlefield.
+**ML & RL meet retro game arenas.**
 
-<img src="https://raw.githubusercontent.com/Jesse-Jumbo/TankMan/49dc8cb825ddd8dea61936fb6d339c846fe68d6c/asset/image/TankMan.svg" alt="logo" width="100"/>
+Three game AI agents — each one smarter than the last — built on the [PAIA MLGame](https://github.com/PAIA-Playful-AI-Arena/MLGame) framework. From imitating an expert with a decision tree, to navigating battlefields with BFS, to learning combat strategy from scratch via Q-Learning.
 
-[![TankMan](https://img.shields.io/github/v/tag/Jesse-Jumbo/TankMan)](https://github.com/Jesse-Jumbo/TankMan/tree/0.7.0)
 [![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/release/python-390/)
-[![MLGame](https://img.shields.io/badge/MLGame-10.2.5a0-<COLOR>.svg)](https://pypi.org/project/mlgame/10.2.5a0/)
-[![pygame](https://img.shields.io/badge/pygame-2.0.1-<COLOR>.svg)](https://github.com/pygame/pygame/releases/tag/2.0.1)
+[![MLGame](https://img.shields.io/badge/MLGame->10.3.2-green.svg)](https://github.com/PAIA-Playful-AI-Arena/MLGame)
 
-![game.gif](https://raw.githubusercontent.com/Jesse-Jumbo/TankMan/main/asset/image/game.gif)
+---
 
+## Projects at a Glance
 
+| Project | Game Type | AI Approach | Key Techniques |
+|---------|-----------|-------------|----------------|
+| [Arkanoid](#arkanoid--supervised-learning) | Brick Breaker | Supervised ML | Physics simulation → Data collection → Decision Tree |
+| [Swimming Squid](#swimming-squid--reinforcement-learning) | Competitive Foraging | Reinforcement Learning | Directional state quantization → Tabular Q-Learning |
+| [TankMan](#tankman--hybrid-bfs--reinforcement-learning) | Team Tank Battle | Hybrid RL + Search | BFS pathfinding + Q-Learning combat controller |
 
-## Overview
+---
 
-Two teams (Green vs. Blue) battle on a grid-based arena. Each player controls a tank that can move, turn, and fire bullets. The map contains destructible walls, fuel stations, and ammo stations — all of which are contested resources. Supplies respawn on a timer, so getting there first matters.
+## Arkanoid — Supervised Learning
 
-> **Note:** Since v0.6.0 the game supports 2–6 player team matches. Since v0.7.0 the tank body and turret can be rotated independently.
+A classic brick breaker where the AI learns to control the paddle by imitating a physics-based expert policy.
 
+### Approach
 
+The pipeline has three stages: a handcrafted script auto-plays the game using ball trajectory prediction, the resulting frame-by-frame decisions are saved as training data, and a Decision Tree classifier learns to replicate that behavior.
 
-## Requirements
-
-- Python 3.9
-- mlgame 10.2.5a0
-- pytmx 3.31
-
-
-## Getting Started
-
-The `.` in each command refers to the game project path. If no arguments are provided after `.`, the defaults from `game_config.json` are used.
-
-```bash
-# Manual play (2 players, keyboard controlled)
-python -m mlgame -f 120 -i ml/ml_play_manual.py -i ml/ml_play_manual.py . \
-  --green_team_num 1 --blue_team_num 1 --is_manual 1 --frame_limit 1000
-
-# AI play (2 AI agents)
-python -m mlgame -f 120 -i ml/ml_play.py -i ml/ml_play.py . \
-  --green_team_num 1 --blue_team_num 1 --frame_limit 1000
+```mermaid
+flowchart LR
+    A["🎮 Rule-Based Agent
+    Ball physics & bounce prediction"] -->|auto-play| B["💾 Data Collection
+    Per-frame features + actions"]
+    B -->|train| C["🌳 Decision Tree
+    Predict paddle movement"]
+    C -->|deploy| D["🕹️ ML Agent
+    Real-time inference"]
 ```
 
-### Launch Parameters
+### State Features
 
-| Parameter | Range | Description |
-|-----------|-------|-------------|
-| `green_team_num` | 1–3 | Number of players on the Green team |
-| `blue_team_num` | 1–3 | Number of players on the Blue team |
-| `is_manual` | 0 / 1 | Enable keyboard control mode |
-| `frame_limit` | 30–3000 | Total game frames (duration) |
-| `sound` | `on` / `off` | Toggle sound effects |
+The model receives these features each frame:
 
-Add `-1` after `mlgame` to run a single game only.
+| Feature | Description |
+|---------|-------------|
+| `ball_x`, `ball_y` | Current ball position |
+| `delta_x`, `delta_y` | Ball velocity vector |
+| `direction` | Encoded ball direction (4 quadrants) |
+| `platform_x` | Current paddle position |
+| `frame` | Frame number |
 
+### Actions
 
-## Controls
+The model predicts one of three paddle commands: `MOVE_LEFT` (−1), `MOVE_RIGHT` (+1), or `NONE` (0).
 
-### Keyboard
+### Key Design Decisions
 
-| Action | 1P | 2P |
-|--------|----|----|
-| Move / Turn | Arrow keys | W / A / S / D |
-| Shoot | M | F |
+- **Bounce prediction** accounts for wall reflections using an even/odd parity method to compute the final landing X coordinate.
+- **Brick collision** is considered — the agent simulates ball reflection off bricks to adjust the predicted landing point.
+- **Randomized thresholds** in the expert script add natural variance to the training data, improving model robustness.
 
-**Camera:** I / K / J / L to pan, O / U to zoom in/out. Press **H** to hide HUD overlay. Press **P** to pause (mlgame ≥ 10.2).
+📂 **[View game rules & details →](./arkanoid/README.md)**
 
-### AI Control
+---
 
-Write a Python script in the `ml/` directory. See `ml_play.py` (AI template) and `ml_play_manual.py` (manual template) for reference.
+## Swimming Squid — Reinforcement Learning
 
+A competitive 2-player ocean foraging game. Each squid eats food for points, avoids garbage, and can collide with the opponent for bonus/penalty scoring. The agent learns an optimal movement policy entirely through Q-Learning.
 
-## Game Rules
+### Approach
 
-### Win Conditions
+The environment is discretized by computing a weighted score for each of the four movement directions (food value divided by distance, plus opponent threat), then ranking those scores into a compact state tuple. A tabular Q-Learning agent explores this state space over 150 training rounds with decaying ε-greedy exploration.
 
-The match ends when time expires or one team is eliminated. The winning team is determined by:
+```mermaid
+flowchart LR
+    A["🌊 Environment
+    Foods, garbage, opponent"] -->|observe| B["📐 State Quantization
+    Score each direction
+    by value ÷ distance"]
+    B -->|rank| C["🔢 Discrete State
+    4D rank tuple
+    e.g. (2,0,3,1)"]
+    C -->|ε-greedy| D["📊 Q-Table
+    4×4×4×4×4"]
+    D -->|action| E["🦑 Agent
+    UP / DOWN / LEFT / RIGHT"]
+    E -->|reward| D
+```
 
-1. **Elimination** — Destroy all enemy tanks.
-2. **Score** — If both teams survive, the higher-scoring team wins.
+### State Representation
 
-### Scoring
+Each frame, the agent processes all visible food and the opponent into four directional buckets (UP, DOWN, LEFT, RIGHT). Items are scored by `value / (distance + 1)` and summed per direction. The four sums are then **rank-ordered** (0–3), producing a compact 4D state.
 
-| Event | Points |
-|-------|--------|
-| Enemy life lost | +20 |
-| Wall hit | +1 |
-| Wall destroyed | +5 |
+### Training Configuration
 
-### Loss Conditions
+| Parameter | Value | Strategy |
+|-----------|-------|----------|
+| State space | 4⁴ × 4 = 1,024 entries | Rank-based discretization |
+| Exploration (ε) | 1.0 → 0.01 | Linear decay over 150 rounds |
+| Learning rate (α) | 1.0 → 0.01 | Linear decay over 150 rounds |
+| Discount (γ) | 0.9 | — |
 
-A team loses if all its members reach zero lives, or if it has a lower score when time expires.
+### Reward Shaping
 
+The reward is based on alignment between the chosen action and the optimal direction ranking — the agent receives higher reward for moving toward the direction with the best score.
 
-## Game Objects
+📂 **[View game rules & details →](./swimming-squid/README.md)**
 
-### Tank
+---
 
-| Attribute | Value |
-|-----------|-------|
-| Move speed | 8 px/frame |
-| Turn increment | 45° |
-| Lives | 3 |
-| Max fuel | 100 |
-| Max ammo | 10 |
+## TankMan — Hybrid BFS + Reinforcement Learning
 
-### Walls
+A team-based tank battle game combining **BFS pathfinding** for resource management with **Q-Learning** for combat aiming. The agent switches between two behavioral modes depending on the tactical situation.
 
-Walls have **4 hit points** and become progressively transparent as they take damage.
+### Approach
 
-### Supply Stations
+The agent operates a priority-based decision loop: when fuel or ammo is low, it uses BFS on a discretized grid map to navigate to the nearest supply station. When an enemy is within range, it switches to a Q-Learning policy that controls turret aiming and firing decisions.
 
-| Station | Replenishes | Amount | Cap | On Contact |
-|---------|-------------|--------|-----|------------|
-| Fuel Station | Fuel | +30 | 100 | Relocates randomly |
-| Ammo Station | Bullets | +5 | 10 | Relocates randomly |
+```mermaid
+flowchart TD
+    A["🎯 Decision Loop"] --> B{"Low fuel or ammo?"}
+    B -->|Yes| C["🗺️ BFS Pathfinding
+    Grid map → nearest station"]
+    B -->|No| D{"Enemy within 300px?"}
+    D -->|Yes| E["🤖 Q-Learning Combat
+    Aim & shoot policy"]
+    D -->|No| F["🧱 Wall Destruction
+    Scan & clear obstacles"]
 
-Supplies respawn over time — first come, first served.
+    C -->|FORWARD / BACKWARD
+    TURN_LEFT / TURN_RIGHT| G["🕹️ Execute Action"]
+    E -->|SHOOT / AIM_RIGHT
+    AIM_LEFT / BACKWARD| G
+    F -->|SHOOT / AIM_RIGHT
+    random move| G
+```
 
+### BFS Navigation
 
-## Map
+The map is discretized into a 50×30 grid. Walls, stations, teammates, and enemies are projected onto this grid. The BFS search operates in a 3D state space `(row, col, angle)` — considering the tank's facing direction — and returns the shortest path to the nearest fuel or bullet station.
 
-The arena is **1000 × 600 pixels**, divided into a grid of **50 × 50 px** cells. Each cell can hold one object. For custom map creation, see [Mapping.md](Mapping.md).
+### Q-Learning Combat Controller
 
-<img src="https://raw.githubusercontent.com/Jesse-Jumbo/TankMan/main/asset/image/view_ex.png" alt="Game view" width="800"/>
+When an enemy enters range, the agent computes a state vector for the Q-table:
 
+| State Dimension | Values | Description |
+|-----------------|--------|-------------|
+| `angle_diff` | 0–8 | Discretized angle between gun and enemy (45° bins) |
+| `turning_direction` | 0–1 | Clockwise vs. counter-clockwise to target |
+| `is_cooldown` | 0–1 | Whether the gun is on cooldown |
+| `teammate_angle_diff` | 0–8 | Angle to nearest teammate (friendly fire avoidance) |
 
-## Credits
+The Q-table has shape `(9, 2, 2, 9, 5)` mapping states to five actions: SHOOT, AIM_RIGHT, AIM_LEFT, BACKWARD, and a fallback wall-destruction mode.
 
-**Art:** [Green/Blue Tank & Bullet](https://linevoom.line.me/user/_dV001P0rSN_bh8zGE0q4jmdr4Fn5d-j73cLrjTc), [Hourglass](https://opengameart.org/content/animated-hourglass), [Object Icons](https://opengameart.org/content/simple-shooter-icons)
-**Audio:** [BGM](https://opengameart.org/content/commando-team-action-loop-cut), [SFX](https://opengameart.org/content/random-low-quality-sfx)
+### Training Configuration
+
+| Parameter | Value | Strategy |
+|-----------|-------|----------|
+| State space | 9×2×2×9×5 = 1,620 entries | Angle-based discretization |
+| Exploration (ε) | 1.0 → 0.01 | Linear decay over 170 rounds |
+| Learning rate (α) | 1.0 → 0.01 | Linear decay over 170 rounds |
+| Discount (γ) | 0.9 | — |
+
+📂 **[View game rules & details →](./tankman/README.md)**
+
+---
+
+## Tech Stack
+
+- **Language:** Python 3.9
+- **Game Framework:** [PAIA MLGame](https://github.com/PAIA-Playful-AI-Arena/MLGame), Pygame 2.0.1
+- **ML/RL:** NumPy (tabular Q-Learning), scikit-learn (Decision Tree)
+- **Pathfinding:** Custom BFS with directional state space
+- **Serialization:** Pickle (Q-tables and trained models)
+
+---
+
+## Repository Structure (ML/RL related files)
+
+```
+.
+├── README.md                  # ← You are here
+├── arkanoid/
+│   ├── README.md              # Game rules & details
+│   └── ml/
+│       ├── ml_play_template.py        # Rule-based expert + data collection
+│       └── ml_play_model.py           # Trained Decision Tree agent
+├── swimming-squid/
+│   ├── README.md              # Game rules & details
+│   └── ml/
+│       ├── handleData.py              # State quantization + Q-Learning class
+│       ├── Qlearning.py               # Training script
+│       └── model_play.py              # Trained Q-table agent
+└── tankman/
+    ├── README.md              # Game rules & details
+    └── ml/
+        ├── data_handler.py            # State processing + Q-Learning class
+        ├── find_station.py            # BFS pathfinder
+        ├── wall_handler.py            # Wall detection & destruction
+        ├── trainQL_play.py            # Training script
+        └── ml_model_play.py           # Trained hybrid agent
+```
+
+---
+
+## How to Run
+
+```bash
+# Install dependencies
+pip install mlgame pygame numpy scikit-learn
+
+# Run any game with its AI agent
+python -m mlgame -i ./ml/ml_play_model.py ./ --level <N>
+```
+
+See each project's README for game-specific configuration and level options.
+
+---
+
+## Author
+
+**Harris** — Built as a portfolio exploring the progression from rule-based AI to reinforcement learning in competitive game environments.
