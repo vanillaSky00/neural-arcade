@@ -1,0 +1,23 @@
+python -m mlgame -f 30 -i ./ml/test.py . --difficulty NORMAL --level 24
+python -m mlgame -f 30 -i ./ml/test.py . --difficulty NORMAL --level 24
+
+python -m mlgame -f 30 -i /Users/harris/MLGame/arkanoid/ml/test.py . --difficulty NORMAL --level 2
+
+
+
+# model play game
+python -m mlgame -f 120 --one-shot -i ./ml/ml_play_model.py . --difficulty NORMAL --level 1
+
+#train
+pyhton train.py <index>
+
+
+#######linux commands
+# make many directory
+for i in {1..24}; do mkdir data$i; done
+
+# move file to specifice directory
+for i in {1..24}; do mv $i-5.pickle /Users/harris/MLGame/log/data$i; done
+
+# consecutive train
+for i in {1..24}; do python train.py $i; done
