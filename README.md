@@ -1,15 +1,17 @@
+<div align="center">
+
 # 🕹️ neural-arcade
 
 **ML & RL meet retro game arenas.**
 
-Three game AI agents — each one smarter than the last — built on the [PAIA MLGame](https://github.com/PAIA-Playful-AI-Arena/MLGame) framework. From imitating an expert with a decision tree, to navigating battlefields with BFS, to learning combat strategy from scratch via Q-Learning.
+Three game AI agents — each one smarter than the last — built on the [PAIA MLGame](https://github.com/PAIA-Playful-AI-Arena) framework. From imitating an expert with a decision tree, to navigating battlefields with BFS, to learning combat strategy from scratch via Q-Learning.
 
 [![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![MLGame](https://img.shields.io/badge/MLGame->10.3.2-green.svg)](https://github.com/PAIA-Playful-AI-Arena/MLGame)
 
----
 
-## Projects at a Glance
+
+
 
 | Project | Game Type | AI Approach | Key Techniques |
 |---------|-----------|-------------|----------------|
@@ -17,7 +19,7 @@ Three game AI agents — each one smarter than the last — built on the [PAIA M
 | [Swimming Squid](#swimming-squid--reinforcement-learning) | Competitive Foraging | Reinforcement Learning | Directional state quantization → Tabular Q-Learning |
 | [TankMan](#tankman--hybrid-bfs--reinforcement-learning) | Team Tank Battle | Hybrid RL + Search | BFS pathfinding + Q-Learning combat controller |
 
----
+</div>
 
 ## Arkanoid — Supervised Learning
 
